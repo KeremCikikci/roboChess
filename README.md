@@ -1,4 +1,8 @@
 # RoboChess
+
+![vlcsnap-2023-12-28-12h02m27s572](https://github.com/KeremCikikci/roboChess/assets/98697826/e42757b8-ec79-4b1e-aa9e-1dc056089322)
+
+https://www.youtube.com/watch?v=UMYv8-Q6y2Y
  
 Each frame captured by the camera undergoes various processes to eliminate proportional distortions and noise. In the obtained output, each frame is observed individually and converted from BGR format to HSV format.
 
