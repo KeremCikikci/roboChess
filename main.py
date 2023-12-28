@@ -3,8 +3,8 @@ import cv2
 import json
 import copy
 import berserk
-from PIL import ImageGrab
 from colorama import init, Fore, Style
+from datetime import timedelta, datetime
 import time
 import serial
 
@@ -13,7 +13,7 @@ import functions as func
 init(autoreset=True)
 
 ### Constants ###
-GAME_ID = 'ahIGvWiw'
+GAME_ID = 'ulPb3PcY'
 ARDUINO_PORT = 'COM6'
 VIDEO_DEVICE = 0
 GAMER = "WHITE"
@@ -34,6 +34,7 @@ color_threshold_lichess = .1
 whiteTreshold = .2
 blackTreshold = .13
 
+button_trigger = datetime.now()
 
 ### SATRANC TAHTASININ ÜSTÜNDEKI ###
 lowerBoardWhite_hsv = (0, 0, 125)
@@ -126,62 +127,74 @@ else:
         print(f"({i}, {j}): {format_1} (Oyun Tahtasi) -> {format_2} (Lichess)")
 
 while True:
+    button_time = datetime.now()
+
     move = None
     captured = None
     changes = []
 
     if turn == GAMER:
-        nextMove = input() ##### => Butona basmak yerine
-        ret, board = cam.read()
-        
-        board = cv2.warpPerspective(board, matrix, (width, height))
-
-        newContents = copy.deepcopy(contents)
-        print("here")
-        for x in range(8):
-            for y in range(8):
-                square = board[int(y * squareHeight):int((y+1) * squareHeight), int(x * squareWidth):int((x+1)*squareWidth)]
+        #nextMove = input() ##### => Butona basmak yerine
+        try:
+            read = arduino.readline().decode().strip()
+        except:
+            pass
+        else:
+            if len(read) > 1:
+                print(read)
+            if read == 'move' and button_time > button_trigger:
+                button_trigger = button_time + timedelta(seconds=1)
                 
-                contents[7-x][y] = func.detectColor(square, lowerBoardWhite_hsv, upperBoardWhite_hsv, lowerBoardBlack_hsv, upperBoardBlack_hsv, whiteTreshold, blackTreshold)
+                ret, board = cam.read()
+                
+                board = cv2.warpPerspective(board, matrix, (width, height))
 
-                #contents[7-x][y] = func.colorDetect(square, references[x][y], midDefPerBlack, midDefPerWhite, vis=showDetails)
-        
-                cv2.imwrite(path+horizontal[x]+str(y+1)+'.jpg', square)
+                newContents = copy.deepcopy(contents)
+                print("here")
+                for x in range(8):
+                    for y in range(8):
+                        square = board[int(y * squareHeight):int((y+1) * squareHeight), int(x * squareWidth):int((x+1)*squareWidth)]
+                        
+                        contents[7-x][y] = func.detectColor(square, lowerBoardWhite_hsv, upperBoardWhite_hsv, lowerBoardBlack_hsv, upperBoardBlack_hsv, whiteTreshold, blackTreshold)
 
-        changes = func.detectChanges(newContents, contents)
+                        #contents[7-x][y] = func.colorDetect(square, references[x][y], midDefPerBlack, midDefPerWhite, vis=showDetails)
+                
+                        cv2.imwrite(path+horizontal[x]+str(y+1)+'.jpg', square)
 
-        print(changes)
+                changes = func.detectChanges(newContents, contents)
 
-        if len(changes) == 2 or len(changes) == 4: # for better result set it > 0
-            move, captured = func.detectMove(changes, newContents, contents)
-            
-            print(move, captured)
-            
-            if move == "KISA":
-                if GAMER == "BLACK":
-                    move = "e8g8"
-                else:
-                    move = "e1g1"
-            elif move == "UZUN":
-                if GAMER == "BLACK":
-                    move = "e8c8"
-                else:
-                    move = "e1c1"
+                print(changes)
 
-            try:
-                berserk.clients.Board(session=session).make_move(GAME_ID, move)            
-            except berserk.exceptions.ResponseError as e:
-                print(e)
-            else:
-                print("DIsSADADSa")
-                #print(contents, newContents)
-                #contents = copy.deepcopy(newContents)
-                #liContents = copy.deepcopy(newContents)
+                if len(changes) == 2 or len(changes) == 4: # for better result set it > 0
+                    move, captured = func.detectMove(changes, newContents, contents)
+                    
+                    print(move, captured)
+                    
+                    if move == "KISA":
+                        if GAMER == "BLACK":
+                            move = "e8g8"
+                        else:
+                            move = "e1g1"
+                    elif move == "UZUN":
+                        if GAMER == "BLACK":
+                            move = "e8c8"
+                        else:
+                            move = "e1c1"
 
-                move, captured = None, None
-                changes = []
-                turn = rival
-                print("SIRA RIVALDA")  
+                    try:
+                        berserk.clients.Board(session=session).make_move(GAME_ID, move)            
+                    except berserk.exceptions.ResponseError as e:
+                        print(e)
+                    else:
+                        print("DIsSADADSa")
+                        #print(contents, newContents)
+                        #contents = copy.deepcopy(newContents)
+                        #liContents = copy.deepcopy(newContents)
+
+                        move, captured = None, None
+                        changes = []
+                        turn = rival
+                        print("SIRA RIVALDA")  
         
     else:
         time.sleep(0.5)
@@ -195,6 +208,7 @@ while True:
             move, captured = func.detectMove(changes, contents, newLiContents)
     
         if move != None:
+            button_trigger = button_time + timedelta(seconds=8)
             print(f"{Fore.CYAN}{move}{Style.RESET_ALL}")
 
             # Reverse Vertically for Robot
@@ -203,11 +217,18 @@ while True:
                 moveNumber2 = move[3]
                 move = move[0] + str(9-int(moveNumber1)) + move[2] + str(9-int(moveNumber2))
             
-            if captured != None:
-                print(f"{Fore.YELLOW}{captured}{Style.RESET_ALL}")
-                func.move(arduino, move, True)
+                if captured != None:
+                    print(f"{Fore.YELLOW}{captured}{Style.RESET_ALL}")
+                    func.move(arduino, move, True)
+                else:
+                    func.move(arduino, move, False)
+                
             else:
-                func.move(arduino, move, False)
+                print(f"{Fore.YELLOW}{captured}{Style.RESET_ALL}")
+                if move == "UZUN":
+                    func.move(arduino, "L", True)
+                elif move == "KISA":
+                    func.move(arduino, "S", True)
 
             #liContents = copy.deepcopy(newLiContents)
             contents = copy.deepcopy(newLiContents)
