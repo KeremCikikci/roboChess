@@ -6,10 +6,20 @@ import time
 
 horizontal = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
 
+#It is not saved in the settings.json file for testing purposes only for now.
+fx = 914.413655169
+fy = 915.827825362
+cx = 634.088633608
+cy = 373.530293726
+k1 = -0.474162217
+k2 = 0.296860407
+k3 = 0.000851414
+k4 = -0.001612337
+
 def calibCorner():
     def fare_konumu(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
-            print(f"Fare sol tıklama: x={x}, y={y}")
+            print(f"Left Click: x={x}, y={y}")
             corners.append([x, y])
 
     corners = []
@@ -23,19 +33,16 @@ def calibCorner():
     cv2.setMouseCallback("Select Corner", fare_konumu)
 
     while True:
-        # Kameradan bir frame al
         ret, frame = cam.read()
 
-        # Frame'i göster
         cv2.imshow("Select Corner", frame)
 
         if len(corners) == 4:
             break
-        # 'q' tuşuna basıldığında döngüyü kır
+        
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    # Kamera ve pencereyi serbest bırak
     cam.release()
     cv2.destroyAllWindows()
 
@@ -254,3 +261,88 @@ def move(arduino, move, captured):
         arduino.write(bytes("C", 'utf-8'))
     else:
         arduino.write(bytes("M", 'utf-8'))
+
+# The following functions were used in previous versions
+        
+def fisheye_correction(img, fx, fy, cx, cy, k1, k2, k3, k4):
+    K = np.array([[fx, 0, cx],
+                  [0, fy, cy],
+                  [0, 0, 1]], dtype=np.float64)
+
+    D = np.array([k1, k2, k3, k4], dtype=np.float64)
+    
+    corrected_img = cv2.fisheye.undistortImage(img, K, D, Knew=K)
+    return corrected_img
+
+def findSym(board, corners, model, width, height):
+    board = fisheye_correction(board, fx, fy, cx, cy, k1, k2, k3, k4)
+
+    prediction = model.predict(board)
+
+    boxes = prediction[0].boxes
+
+    if len(boxes) == 4:
+        x1, y1, w1, h1 = boxes[0].xyxy[0]
+        x2, y2, w2, h2 = boxes[1].xyxy[0]
+        x3, y3, w3, h3 = boxes[2].xyxy[0]
+        x4, y4, w4, h4 = boxes[3].xyxy[0]
+
+        p1 = [int(getClosest(x1, w1, width / 2)), int(getClosest(y1, h1, height / 2))]
+        p2 = [int(getClosest(x2, w2, width / 2)), int(getClosest(y2, h2, height / 2))]
+        p3 = [int(getClosest(x3, w3, width / 2)), int(getClosest(y3, h3, height / 2))]
+        p4 = [int(getClosest(x4, w4, width / 2)), int(getClosest(y4, h4, height / 2))]
+
+        corners = [p1, p2, p3, p4]
+
+        corners = sort_points(corners)
+
+    else:
+        print("eksik ve ya fazla sembol tespiti")
+        findSym(board, corners)
+
+    return board, corners
+
+def sort_points(points):
+    # X koordinatlarına göre sırala
+    sorted_points = sorted(points, key=lambda x: x[0])
+
+    # Sol üst ve sağ üst noktaları belirle
+    leftmost = sorted_points[:2]
+    rightmost = sorted_points[2:]
+
+    # Sol üst ve sol alt noktaları belirle
+    leftmost = sorted(leftmost, key=lambda x: x[1])
+    (tl, bl) = leftmost
+
+    # Sağ üst ve sağ alt noktaları belirle
+    rightmost = sorted(rightmost, key=lambda x: x[1])
+    (tr, br) = rightmost
+
+    return [tl, tr, br, bl]
+
+def getClosest(x, y, z):
+    if abs(x-z) < abs(y-z):
+        return x
+    else:
+        return y
+    
+def Clock(client, gameID, arduino):
+    clocks = client.games.export(gameID)["clocks"]
+
+    whiteClock = None
+    blackClock = None
+
+    if len(clocks) >= 2:
+        if len(clocks) % 2 == 0:
+            whiteClock = clocks[-2] // 100
+            blackClock = clocks[-1] // 100
+        else:
+            whiteClock = clocks[-1] // 100
+            blackClock = clocks[-2] // 100
+
+        clock = str(whiteClock) + str(blackClock)
+        arduino.write(bytes(clock, 'utf-8'))
+    time.sleep(.2)
+
+    arduino.write(bytes(move, 'utf-8'))
+    time.sleep(.2)

@@ -18,9 +18,9 @@ Servo w;
 #define pulseZ 11
 #define switchZ A2
 
-boolean rotX = false; // false: autohome
-boolean rotY = true; // false: autohome
-boolean rotZ = true; // false: autohome
+boolean rotX = false; // false: go0
+boolean rotY = true; // false: go0
+boolean rotZ = true; // false: go0
 
 double SPMX = 10.1;//9.5; // 9.75, 8.5
 double SPDY = 28.89;//28.89
@@ -79,11 +79,11 @@ String segments[10] = {
 };
 
 
-void autoHome(int delay_){
+void go0(int delay_){
   w.write(120);
-  rotX = false; // false: autohome
-  rotY = false; // false: autohome
-  rotZ = false; // false: autohome
+  rotX = false; // false: go0
+  rotY = false; // false: go0
+  rotZ = false; // false: go0
 
   boolean switchXValue;
   boolean switchYValue;
@@ -209,7 +209,7 @@ void goPos(double xPosToGo, double aAngleToGo, double bAngleToGo, int minSpeed, 
     boolean switchZValue = digitalRead(switchZ);
 /*
     if (((switchXValue == 1) || (switchYValue == 1) || (switchZValue == 1)) && (counter > 2000)){
-      autoHome(500);
+      go0(500);
       break;
     }*/
 
@@ -370,7 +370,7 @@ void goPos2(double xPosToGo, double aAngleToGo, double bAngleToGo, int minSpeed,
     boolean switchZValue = digitalRead(switchZ);
 /*
     if (((switchXValue == 1) || (switchYValue == 1) || (switchZValue == 1)) && (counter > 2000)){
-      autoHome(500);
+      go0(500);
       break;
     }*/
 
@@ -566,7 +566,11 @@ void setup(){
   Serial.setTimeout(1);
   digitalWrite(dirX, rotX);
   digitalWrite(dirY, rotY);
-  digitalWrite(dirZ, rotZ);/*
+  digitalWrite(dirZ, rotZ);
+  
+  /*
+  Manneall Stepper Starter
+
   for(int i = 0; i < (int)(SPDY * 100); i++){
     digitalWrite(dirY, 1);
     digitalWrite(pulseY, 1);
@@ -582,7 +586,7 @@ void setup(){
     digitalWrite(pulseZ, 0);
     delayMicroseconds(500);
   }*/
-  autoHome(500);
+  go0(500);
   digitalWrite(gripper,0);
   goPos(0, 90, 90, 1000, 400, 0);
   w.write(90);
@@ -593,9 +597,9 @@ void setup(){
 void loop(){
   unsigned long currentMillis = millis();
   
-  if (digitalRead(button) == 1){
+  if (digitalRead(button) == 0){
     delay(250);
-    if (digitalRead(button) == 1){
+    if (digitalRead(button) == 0){
       Serial.println("move");
     }
   }
@@ -619,10 +623,10 @@ void loop(){
         Serial.println(clock_);
         formatClock();
       }
-      // hamleyi gönder
-      // castles
+      // Show Move
+      // Castles
       else if (data == "S"){
-        // ilk kare 
+        // 1. Square 
         digitalWrite(gripper, 0);
         goPos(180 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1000, 400, servoBosts[0]);
         digitalWrite(gripper, 1);
@@ -632,7 +636,7 @@ void loop(){
         goPos(180 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1800, 1200, servoBosts[0]);
         delay(250);
         
-        // ucuncu kare
+        // 3. Square
         goPos(260 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1000, 400, servoBosts[0]);
         delay(250);
         goPos(260 + rightPadding, aAngles_[0][1], bAngles_[0][1], 1800, 1200, servoBosts[0]);
@@ -641,7 +645,7 @@ void loop(){
         goPos(260 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1800, 1200, servoBosts[0]);
         delay(250);
 
-        // dördüncü kare
+        // 4. Square
         goPos(300 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1000, 400, servoBosts[0]);
         digitalWrite(gripper, 1);
         delay(250);
@@ -650,7 +654,7 @@ void loop(){
         goPos(300 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1800, 1200, servoBosts[0]);
         delay(250);
         
-        // ikinci kare
+        // 2. Square
         goPos(220 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1000, 400, servoBosts[0]);
         delay(250);
         goPos(220 + rightPadding, aAngles_[0][1], bAngles_[0][1], 1800, 1200, servoBosts[0]);
@@ -663,7 +667,7 @@ void loop(){
       }
 
       else if (data == "L"){
-        // 4. kare 
+        // 4. Square 
         digitalWrite(gripper, 0);
         goPos(20 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1000, 400, servoBosts[0]);
         digitalWrite(gripper, 1);
@@ -673,7 +677,7 @@ void loop(){
         goPos(20 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1800, 1200, servoBosts[0]);
         delay(250);
         
-        // 6. kare
+        // 6. Square
         goPos(140 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1000, 400, servoBosts[0]);
         delay(250);
         goPos(140 + rightPadding, aAngles_[0][1], bAngles_[0][1], 1800, 1200, servoBosts[0]);
@@ -682,7 +686,7 @@ void loop(){
         goPos(140 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1800, 1200, servoBosts[0]);
         delay(250);
 
-        // 8. kare
+        // 8. Square
         goPos(180 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1000, 400, servoBosts[0]);
         digitalWrite(gripper, 1);
         delay(250);
@@ -691,7 +695,7 @@ void loop(){
         goPos(180 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1800, 1200, servoBosts[0]);
         delay(250);
         
-        // 5. kare
+        // 5. Square
         goPos(100 + rightPadding, aAngles_[0][0], bAngles_[0][0], 1000, 400, servoBosts[0]);
         delay(250);
         goPos(100 + rightPadding, aAngles_[0][1], bAngles_[0][1], 1800, 1200, servoBosts[0]);
@@ -707,54 +711,54 @@ void loop(){
         num1 = second.toInt() - 1;
         num2 = fourth.toInt() - 1;
 
-        // 1. Yukarda
+        // 1. High
         double x1 = findIndexOfStringInList(alphabet, first) * squareSize + squareSize / 2 + rightPadding;
         int y1 = num1;
         double a1Y = aAngles_[y1][0];
         double b1Y = bAngles_[y1][0];
 
-        // 1. Assada
+        // 1. Low
         double a1A = aAngles_[y1][1];
         double b1A = bAngles_[y1][1];
 
-        // 2. Yukarda
+        // 2. High
         double x2 = findIndexOfStringInList(alphabet, third) * squareSize + squareSize / 2 + rightPadding;
         int y2 = num2;
         double a2Y = aAngles_[y2][0];
         double b2Y = bAngles_[y2][0];
 
-        // 2. Assada
+        // 2. Low
         double a2A = aAngles_[y2][1];
         double b2A = bAngles_[y2][1];
         
-        // Harakete gec
-        // tas yenirse
+        // Move
+        // If Capture
         if (data == "C"){
-          // 2. Tasin üstüne git
+          // 2. Square
           digitalWrite(gripper, 0);
           goPos(x2, a2Y, b2Y, 1000, 400, servoBosts[y2 ]);
           delay(250);
           digitalWrite(gripper, 1);
 
-          // 2. i al
+          // Take 2
           goPos(x2, a2A, b2A, 1800, 1200, servoBosts[y2 ]);
           delay(250);
           goPos(x2, a2Y, b2Y, 1800, 1200, servoBosts[y2 ]);
           delay(250);
 
-          // kenara at
+          // Remove
           goPos(0, 65, 90, 1000, 400, 0);
           delay(250);
           digitalWrite(gripper, 0);
         }
         
-        // 1. Tasin üstüne git
+        // 1. Square
         digitalWrite(gripper, 0);
         delay(250);
         goPos(x1, a1Y, b1Y, 1000, 400, servoBosts[y1 ]);
         delay(250);
 
-        // 1. Tasi al
+        // Take 1
         digitalWrite(gripper, 1);
         delay(250);
         goPos(x1, a1A, b1A, 1800, 1000, servoBosts[y1 ]);
@@ -762,12 +766,12 @@ void loop(){
         goPos(x1, a1Y, b1Y, 1800, 1000, servoBosts[y1 ]);
         delay(250);
 
-        // 2. Tasin üstüne git
+        // 2. Square
         goPos(x1, a2Y, b2Y, 600, 400, servoBosts[y2 ]);
         goPos(x2, a2Y, b2Y, 600, 400, servoBosts[y2 ]);
         delay(250);
         
-        // 2. Tasi birak;
+        // 2. Drop;
         goPos(x2, a2A, b2A, 1800, 1000, servoBosts[y2 ]);
         delay(250);
         digitalWrite(gripper, 0);
@@ -781,7 +785,7 @@ void loop(){
         move_ = "None";
       }
       
-      // hamleyi cek
+      // Fetch the Move
       else if (data.length() == 4){
         move_ = data;
 

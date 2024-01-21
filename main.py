@@ -36,7 +36,7 @@ blackTreshold = .13
 
 button_trigger = datetime.now()
 
-### SATRANC TAHTASININ ÜSTÜNDEKI ###
+### ON THE CHESSBOARD ###
 lowerBoardWhite_hsv = (0, 0, 125)
 upperBoardWhite_hsv = (180, 20, 255)
 lowerBoardBlack_hsv = (120, 30, 20)
@@ -89,7 +89,7 @@ client = berserk.Client(session=session)
 
 ### Match Boards ###
 ret, board = cam.read()
-cv2.imwrite("adas.jpg", board)
+#cv2.imwrite("s1.jpg", board)
 board = cv2.warpPerspective(board, matrix, (width, height))
 
 for x in range(8):
@@ -107,10 +107,10 @@ liContents = func.detectLiContents(lowerWhite_hsv, upperWhite_hsv, lowerBlack_hs
 print(contents, liContents)
 
 if liContents == contents:
-    print_ = "Oyun Tahtasi senkron ✔"
+    print_ = "Boards are synchronous ✔"
     print(f"{Fore.GREEN}{print_}{Style.RESET_ALL}")
 else:
-    print_ = "Oyun Tahtasi senkron Degil ✗"
+    print_ = "Boards are not synchronous ✗"
     print(f"{Fore.RED}{print_}{Style.RESET_ALL}")
 
     differences = []
@@ -124,7 +124,7 @@ else:
         _2 = liContents[i][j]
         format_1 = f"{Fore.RED}{_1}{Style.RESET_ALL}"
         format_2 = f"{Fore.RED}{_2}{Style.RESET_ALL}"
-        print(f"({i}, {j}): {format_1} (Oyun Tahtasi) -> {format_2} (Lichess)")
+        print(f"({i}, {j}): {format_1} (Chess Board) -> {format_2} (Lichess)")
 
 while True:
     button_time = datetime.now()
@@ -134,7 +134,7 @@ while True:
     changes = []
 
     if turn == GAMER:
-        #nextMove = input() ##### => Butona basmak yerine
+        #nextMove = input() ##### => If button is not active
         try:
             read = arduino.readline().decode().strip()
         except:
@@ -150,7 +150,7 @@ while True:
                 board = cv2.warpPerspective(board, matrix, (width, height))
 
                 newContents = copy.deepcopy(contents)
-                print("here")
+                print("check1")
                 for x in range(8):
                     for y in range(8):
                         square = board[int(y * squareHeight):int((y+1) * squareHeight), int(x * squareWidth):int((x+1)*squareWidth)]
@@ -170,6 +170,7 @@ while True:
                     
                     print(move, captured)
                     
+                    # Castling
                     if move == "KISA":
                         if GAMER == "BLACK":
                             move = "e8g8"
@@ -186,7 +187,7 @@ while True:
                     except berserk.exceptions.ResponseError as e:
                         print(e)
                     else:
-                        print("DIsSADADSa")
+                        print("check2")
                         #print(contents, newContents)
                         #contents = copy.deepcopy(newContents)
                         #liContents = copy.deepcopy(newContents)
@@ -194,7 +195,7 @@ while True:
                         move, captured = None, None
                         changes = []
                         turn = rival
-                        print("SIRA RIVALDA")  
+                        print("It's the opponent's turn!")  
         
     else:
         time.sleep(0.5)
@@ -235,7 +236,7 @@ while True:
             
             move = None
             turn = GAMER
-            print("SIRA GAMERDA")
+            print("It's the first player's turn!")
         
 
     if cv2.waitKey(1) & 0xFF == ord('q'): 
@@ -243,11 +244,3 @@ while True:
 
 cam.release() 
 cv2.destroyAllWindows() 
-
-
-
-
-
-
-
-
