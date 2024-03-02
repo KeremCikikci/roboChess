@@ -12,12 +12,13 @@ import functions as func
 
 init(autoreset=True)
 
-### Constants ###
-GAME_ID = 'ulPb3PcY'
+### CONSTANTS ###
+GAME_ID = 'kqlXss0B'
 ARDUINO_PORT = 'COM6'
 VIDEO_DEVICE = 0
 GAMER = "WHITE"
 
+# For the Old Color Detection Function
 midDefPerBlack = 12
 midDefPerWhite = 2
 showDetails = False
@@ -31,16 +32,15 @@ path = "squares/"
 color_threshold = .25
 color_threshold_lichess = .1
 
-whiteTreshold = .2
-blackTreshold = .13
+whiteTreshold = .12
+blackTreshold = .1
 
 button_trigger = datetime.now()
 
 ### ON THE CHESSBOARD ###
-lowerBoardWhite_hsv = (0, 0, 125)
-upperBoardWhite_hsv = (180, 20, 255)
-lowerBoardBlack_hsv = (120, 30, 20)
-upperBoardBlack_hsv = (150, 205, 70)
+#lowerBoardWhite_hsv, upperBoardWhite_hsv = (60, 0, 155), (190, 50, 255)
+lowerBoardWhite_hsv, upperBoardWhite_hsv = (50, 30, 150), (255, 250, 255)
+lowerBoardBlack_hsv, upperBoardBlack_hsv = (120, 30, 20), (150, 205, 70)
 
 lowerWhite_hsv = (0, 0, 50)
 upperWhite_hsv = (5, 3, 255)
@@ -58,23 +58,24 @@ contents = [[None] * 8 for _ in range(8)]
 liContents = [[None] * 8 for _ in range(8)]
 turn = GAMER
 
+### CALIBRATIONS ###
 ### Calibrate Corners ###
 #func.calibCorner()
 
 ### Calibrate Board ###
 #func.calibBoard(width, height)
 
-### Initiate Arduino ###
+### INITIATE ARDUINO ###
 arduino = serial.Serial(port=ARDUINO_PORT, baudrate=115200, timeout=0)
 
-### Fetch Data ###
+### FETCH SETTINGS ###
 with open('settings.json', 'r') as file:
     data = json.load(file)
 
-assert "references" in data, "references verisi eksik!"
+assert "references" in data, "references data is missing!"
 references = data['references']
 
-assert "corners" in data, "corners verisi eksik!"
+assert "corners" in data, "corners data is missing!"
 pts1 = np.float32(data["corners"])
 
 pts2 = np.float32([[0, 0], [width, 0], [0, height], [width, height]])
@@ -82,14 +83,14 @@ matrix = cv2.getPerspectiveTransform(pts1, pts2)
 
 cam = cv2.VideoCapture(VIDEO_DEVICE)
 
-### Lichess ###
+### LICHESS ###
 API_TOKEN = 'lip_I07d8jqSPHAYzacfCumR'
 session = berserk.TokenSession(API_TOKEN)
 client = berserk.Client(session=session)
 
-### Match Boards ###
+### MATCH THE BOARDS ###
 ret, board = cam.read()
-#cv2.imwrite("s1.jpg", board)
+cv2.imwrite("board.jpg", board)
 board = cv2.warpPerspective(board, matrix, (width, height))
 
 for x in range(8):
@@ -136,6 +137,7 @@ while True:
     if turn == GAMER:
         #nextMove = input() ##### => If button is not active
         try:
+            #pass
             read = arduino.readline().decode().strip()
         except:
             pass
@@ -143,6 +145,7 @@ while True:
             if len(read) > 1:
                 print(read)
             if read == 'move' and button_time > button_trigger:
+            #if 1 == 1: -> Placeholder
                 button_trigger = button_time + timedelta(seconds=1)
                 
                 ret, board = cam.read()
@@ -150,7 +153,8 @@ while True:
                 board = cv2.warpPerspective(board, matrix, (width, height))
 
                 newContents = copy.deepcopy(contents)
-                print("check1")
+                #print("check1")
+                
                 for x in range(8):
                     for y in range(8):
                         square = board[int(y * squareHeight):int((y+1) * squareHeight), int(x * squareWidth):int((x+1)*squareWidth)]
@@ -170,7 +174,7 @@ while True:
                     
                     print(move, captured)
                     
-                    # Castling
+                    # CASTLING
                     if move == "KISA":
                         if GAMER == "BLACK":
                             move = "e8g8"
@@ -187,7 +191,7 @@ while True:
                     except berserk.exceptions.ResponseError as e:
                         print(e)
                     else:
-                        print("check2")
+                        #print("check2")
                         #print(contents, newContents)
                         #contents = copy.deepcopy(newContents)
                         #liContents = copy.deepcopy(newContents)
@@ -226,6 +230,7 @@ while True:
                 
             else:
                 print(f"{Fore.YELLOW}{captured}{Style.RESET_ALL}")
+                # Castling
                 if move == "UZUN":
                     func.move(arduino, "L", True)
                 elif move == "KISA":

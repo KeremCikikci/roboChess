@@ -6,7 +6,7 @@ import time
 
 horizontal = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
 
-#It is not saved in the settings.json file for testing purposes only for now.
+#For now, it is not saved to the settings.json file for testing purposes.
 fx = 914.413655169
 fy = 915.827825362
 cx = 634.088633608
@@ -58,7 +58,7 @@ def calibBoard(width, height):
     with open('settings.json', 'r') as file:
         data = json.load(file)
     
-    assert "corners" in data, "corners verisi eksik!"
+    assert "corners" in data, "corners data is missing!"
     pts1 = np.float32(data["corners"])
     pts2 = np.float32([[0, 0], [width, 0], [0, height], [width, height]])
     matrix = cv2.getPerspectiveTransform(pts1, pts2)
@@ -91,6 +91,130 @@ def channelSums(im):
 
     return int((imChannelSumR + imChannelSumG + imChannelSumB) / 3)
 
+### Last Version ###
+def detectColor(square, lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, whiteTreshold, blackTreshold):
+    color = 1
+    
+    square = cv2.cvtColor(square, cv2.COLOR_BGR2HSV)
+
+    square_pixels = square.shape[0] * square.shape[1]
+
+    mask_white = cv2.inRange(square, lowerWhite_hsv, upperWhite_hsv)
+    mask_black = cv2.inRange(square, lowerBlack_hsv, upperBlack_hsv)
+
+    white_pixels = np.sum(mask_white > 0)
+    white_intensity = white_pixels / square_pixels
+
+    black_pixels = np.sum(mask_black > 0)
+    black_intensity = black_pixels / square_pixels
+    
+    if white_intensity > whiteTreshold and white_intensity > black_intensity:
+        color = 2
+    elif black_intensity > blackTreshold and black_intensity > white_intensity:
+        color = 0
+
+    return color
+
+def detectChanges(list1, list2):
+    changes = []
+    for i in range(8):
+        for a in range(8):
+            if list1[i][a] != list2[i][a]:
+                changes.append(horizontal[7-i] + str(a+1))
+                # if reverse:
+                #     changes.append(horizontal[7-i] + str(a + 1))
+                # else:
+                #     changes.append(horizontal[i] + str(8-a))
+    if len(changes) > 4:
+        changes = []
+    return changes
+
+def detectMove(changes, newContents, oldContents):
+    captured = None
+    print("DETECT MOVE")
+    print(oldContents, newContents)
+    # Castling
+    if len(changes) == 4:
+        if all(element in changes for element in ['e1', 'f1', 'g1', 'h1']) or all(element in changes for element in ['e8', 'f8', 'g8', 'h8']):
+            return "KISA", captured
+        else:
+            return "UZUN", captured
+    
+    if len(changes) == 2:
+        from_ = None
+        to_ = None
+
+        if oldContents[horizontal[::-1].index(changes[0][0])][int(changes[0][-1]) - 1] == 1:
+            from_ = changes[0]
+            to_ = changes[1]
+        else:
+            from_ = changes[1]
+            to_ = changes[0]
+
+        if newContents[horizontal[::-1].index(to_[0])][int(to_[1]) - 1] != 1:
+            captured = to_
+        
+        #print("from: " + from_)
+        #print("to: " + to_)
+        return from_ + to_, captured
+    
+def detectLiContents(lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, color_threshold_lichess, x1, y1, x2, y2):
+    liContents = [[None] * 8 for _ in range(8)]
+
+    ss = ImageGrab.grab(bbox=(x1, y1, x2, y2))
+    
+    width, height = ss.size
+    total_pixels = width * height / 64
+    squareWidth, squareHeight = width // 8, height // 8
+    ss.save("lichess_sample.jpg")
+    for h in range(0, 8):
+        for n in range(0, 8):
+            square = (h * squareWidth, n * squareHeight, (h+1)*squareWidth, (n+1)*squareHeight)
+            cropped = np.array(ss.crop(square))
+            cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
+
+            mask_white = cv2.inRange(cropped, lowerWhite_hsv, upperWhite_hsv)
+            mask_black = cv2.inRange(cropped, lowerBlack_hsv, upperBlack_hsv)
+
+            white_pixels = np.sum(mask_white > 0)
+            white_intensity = white_pixels / total_pixels
+
+            black_pixels = np.sum(mask_black > 0)
+            black_intensity = black_pixels / total_pixels
+            c = 1
+
+            if white_intensity > color_threshold_lichess or black_intensity > color_threshold_lichess:
+                if white_intensity >= black_intensity:
+                    c = 2
+                else:
+                    c = 0
+            
+            #liContents[h][n] = c
+            
+            # Vertical Reverse Version
+            liContents[h][7-n] = c
+
+            # Horizontal Reverse Version
+            #liContents[7- h][n] = c 
+    
+    return liContents
+
+def move(arduino, move, captured):
+    for i in range(3):
+        arduino.write(bytes(move, 'utf-8'))
+        time.sleep(.2)
+    print(captured)
+    if captured:
+        for i in range(3):
+            arduino.write(bytes("C", 'utf-8'))
+            time.sleep(.2)
+    else:
+        for i in range(3):
+            arduino.write(bytes("M", 'utf-8'))
+            time.sleep(.2)
+        
+
+### THE FOLLOWING FUNCTIONS WERE USED IN PREVIOUS VERSIONS ###
 def colorDetect(im, mid, midDefPerBlack, midDefPerWhite, vis = False):
     sum = channelSums(im)
     
@@ -144,126 +268,7 @@ def colorDetect2(square, lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBl
     #         color = "2#" + str(sum - mid)
 
     return color
-
-### Last Version ###
-def detectColor(square, lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, whiteTreshold, blackTreshold):
-    color = 1
-    
-    square = cv2.cvtColor(square, cv2.COLOR_BGR2HSV)
-
-    square_pixels = square.shape[0] * square.shape[1]
-
-    mask_white = cv2.inRange(square, lowerWhite_hsv, upperWhite_hsv)
-    mask_black = cv2.inRange(square, lowerBlack_hsv, upperBlack_hsv)
-
-    white_pixels = np.sum(mask_white > 0)
-    white_intensity = white_pixels / square_pixels
-
-    black_pixels = np.sum(mask_black > 0)
-    black_intensity = black_pixels / square_pixels
-    
-    if white_intensity > whiteTreshold and white_intensity > black_intensity:
-        color = 2
-    elif black_intensity > blackTreshold and black_intensity > white_intensity:
-        color = 0
-
-    return color
-
-def detectChanges(list1, list2):
-    changes = []
-    for i in range(8):
-        for a in range(8):
-            if list1[i][a] != list2[i][a]:
-                changes.append(horizontal[7-i] + str(a+1))
-                # if reverse:
-                #     changes.append(horizontal[7-i] + str(a + 1))
-                # else:
-                #     changes.append(horizontal[i] + str(8-a))
-    if len(changes) > 4:
-        changes = []
-    return changes
-
-def detectMove(changes, newContents, oldContents):
-    captured = None
-    print("DETECT MOVE")
-    print(oldContents, newContents)
-    # Rok durumu
-    if len(changes) == 4:
-        if all(element in changes for element in ['e1', 'f1', 'g1', 'h1']) or all(element in changes for element in ['e8', 'f8', 'g8', 'h8']):
-            return "KISA", captured
-        else:
-            return "UZUN", captured
-    
-    if len(changes) == 2:
-        from_ = None
-        to_ = None
-
-        if oldContents[horizontal[::-1].index(changes[0][0])][int(changes[0][-1]) - 1] == 1:
-            from_ = changes[0]
-            to_ = changes[1]
-        else:
-            from_ = changes[1]
-            to_ = changes[0]
-
-        if newContents[horizontal[::-1].index(to_[0])][int(to_[1]) - 1] != 1:
-            captured = to_
-        
-        #print("from: " + from_)
-        #print("to: " + to_)
-        return from_ + to_, captured
-    
-def detectLiContents(lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, color_threshold_lichess, x1, y1, x2, y2):
-    liContents = [[None] * 8 for _ in range(8)]
-
-    ss = ImageGrab.grab(bbox=(x1, y1, x2, y2))
-    
-    width, height = ss.size
-    total_pixels = width * height / 64
-    squareWidth, squareHeight = width // 8, height // 8
-    ss.save("s.jpg")
-    for h in range(0, 8):
-        for n in range(0, 8):
-            square = (h * squareWidth, n * squareHeight, (h+1)*squareWidth, (n+1)*squareHeight)
-            cropped = np.array(ss.crop(square))
-            cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
-
-            mask_white = cv2.inRange(cropped, lowerWhite_hsv, upperWhite_hsv)
-            mask_black = cv2.inRange(cropped, lowerBlack_hsv, upperBlack_hsv)
-
-            white_pixels = np.sum(mask_white > 0)
-            white_intensity = white_pixels / total_pixels
-
-            black_pixels = np.sum(mask_black > 0)
-            black_intensity = black_pixels / total_pixels
-            c = 1
-
-            if white_intensity > color_threshold_lichess or black_intensity > color_threshold_lichess:
-                if white_intensity >= black_intensity:
-                    c = 2
-                else:
-                    c = 0
-            
-            #liContents[h][n] = c
-            
-            # Vertical Reverse Version
-            liContents[h][7-n] = c
-
-            # Horizontal Reverse Version
-            #liContents[7- h][n] = c 
-    
-    return liContents
-
-def move(arduino, move, captured):
-    arduino.write(bytes(move, 'utf-8'))
-    time.sleep(.2)
-    print(captured)
-    if captured:
-        arduino.write(bytes("C", 'utf-8'))
-    else:
-        arduino.write(bytes("M", 'utf-8'))
-
-# The following functions were used in previous versions
-        
+   
 def fisheye_correction(img, fx, fy, cx, cy, k1, k2, k3, k4):
     K = np.array([[fx, 0, cx],
                   [0, fy, cy],
@@ -297,24 +302,24 @@ def findSym(board, corners, model, width, height):
         corners = sort_points(corners)
 
     else:
-        print("eksik ve ya fazla sembol tespiti")
+        print("Detection of missing or excess symbols")
         findSym(board, corners)
 
     return board, corners
 
 def sort_points(points):
-    # X koordinatlarına göre sırala
+    # Sort by x coordinates
     sorted_points = sorted(points, key=lambda x: x[0])
 
-    # Sol üst ve sağ üst noktaları belirle
+    # Determine top left and top right points
     leftmost = sorted_points[:2]
     rightmost = sorted_points[2:]
 
-    # Sol üst ve sol alt noktaları belirle
+    # Determine upper left and lower left points
     leftmost = sorted(leftmost, key=lambda x: x[1])
     (tl, bl) = leftmost
 
-    # Sağ üst ve sağ alt noktaları belirle
+    # Identify the upper right and lower right points
     rightmost = sorted(rightmost, key=lambda x: x[1])
     (tr, br) = rightmost
 
