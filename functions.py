@@ -6,7 +6,7 @@ import time
 
 horizontal = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
 
-#For now, it is not saved to the settings.json file for testing purposes.
+# For now, it is not saved to the settings.json file for testing purposes.
 fx = 914.413655169
 fy = 915.827825362
 cx = 634.088633608
@@ -17,7 +17,7 @@ k3 = 0.000851414
 k4 = -0.001612337
 
 def calibCorner():
-    def fare_konumu(event, x, y, flags, param):
+    def mouse_pos(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             print(f"Left Click: x={x}, y={y}")
             corners.append([x, y])
@@ -30,7 +30,7 @@ def calibCorner():
     cam = cv2.VideoCapture(0)
 
     cv2.namedWindow("Select Corner")
-    cv2.setMouseCallback("Select Corner", fare_konumu)
+    cv2.setMouseCallback("Select Corner", mouse_pos)
 
     while True:
         ret, frame = cam.read()
@@ -91,32 +91,8 @@ def channelSums(im):
 
     return int((imChannelSumR + imChannelSumG + imChannelSumB) / 3)
 
-### Last Version ###
 def detectColor(square, model):
     return model(square)[0].probs.top1
-
-def detectColor2(square, lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, whiteTreshold, blackTreshold):
-    color = 1
-    
-    square = cv2.cvtColor(square, cv2.COLOR_BGR2HSV)
-
-    square_pixels = square.shape[0] * square.shape[1]
-
-    mask_white = cv2.inRange(square, lowerWhite_hsv, upperWhite_hsv)
-    mask_black = cv2.inRange(square, lowerBlack_hsv, upperBlack_hsv)
-
-    white_pixels = np.sum(mask_white > 0)
-    white_intensity = white_pixels / square_pixels
-
-    black_pixels = np.sum(mask_black > 0)
-    black_intensity = black_pixels / square_pixels
-    
-    if white_intensity > whiteTreshold and white_intensity > black_intensity:
-        color = 2
-    elif black_intensity > blackTreshold and black_intensity > white_intensity:
-        color = 0
-
-    return color
 
 def detectChanges(list1, list2):
     changes = []
@@ -218,6 +194,29 @@ def move(arduino, move, captured):
         
 
 ### THE FOLLOWING FUNCTIONS WERE USED IN PREVIOUS VERSIONS ###
+def detectColor2(square, lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, whiteTreshold, blackTreshold):
+    color = 1
+    
+    square = cv2.cvtColor(square, cv2.COLOR_BGR2HSV)
+
+    square_pixels = square.shape[0] * square.shape[1]
+
+    mask_white = cv2.inRange(square, lowerWhite_hsv, upperWhite_hsv)
+    mask_black = cv2.inRange(square, lowerBlack_hsv, upperBlack_hsv)
+
+    white_pixels = np.sum(mask_white > 0)
+    white_intensity = white_pixels / square_pixels
+
+    black_pixels = np.sum(mask_black > 0)
+    black_intensity = black_pixels / square_pixels
+    
+    if white_intensity > whiteTreshold and white_intensity > black_intensity:
+        color = 2
+    elif black_intensity > blackTreshold and black_intensity > white_intensity:
+        color = 0
+
+    return color
+
 def colorDetect(im, mid, midDefPerBlack, midDefPerWhite, vis = False):
     sum = channelSums(im)
     
