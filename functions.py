@@ -92,7 +92,10 @@ def channelSums(im):
     return int((imChannelSumR + imChannelSumG + imChannelSumB) / 3)
 
 ### Last Version ###
-def detectColor(square, lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, whiteTreshold, blackTreshold):
+def detectColor(square, model):
+    return model(square)[0].probs.top1
+
+def detectColor2(square, lowerWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, whiteTreshold, blackTreshold):
     color = 1
     
     square = cv2.cvtColor(square, cv2.COLOR_BGR2HSV)

@@ -7,13 +7,14 @@ from colorama import init, Fore, Style
 from datetime import timedelta, datetime
 import time
 import serial
+from ultralytics import YOLO
 
 import functions as func
 
 init(autoreset=True)
 
 ### CONSTANTS ###
-GAME_ID = 'kqlXss0B'
+GAME_ID = 'P5JOI8sD'
 ARDUINO_PORT = 'COM6'
 VIDEO_DEVICE = 0
 GAMER = "WHITE"
@@ -23,22 +24,23 @@ midDefPerBlack = 12
 midDefPerWhite = 2
 showDetails = False
 
-width, height = 800, 800
-squareWidth, squareHeight = int(width / 8), int(height / 8)
-horizontal = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
-
-path = "squares/"
-
 color_threshold = .25
 color_threshold_lichess = .1
 
 whiteTreshold = .12
 blackTreshold = .1
 
+
+width, height = 800, 800
+squareWidth, squareHeight = int(width / 8), int(height / 8)
+horizontal = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
+
+path = "squares/"
+
 button_trigger = datetime.now()
 
 ### ON THE CHESSBOARD ###
-#lowerBoardWhite_hsv, upperBoardWhite_hsv = (60, 0, 155), (190, 50, 255)
+# They are not used in the current version
 lowerBoardWhite_hsv, upperBoardWhite_hsv = (50, 30, 150), (255, 250, 255)
 lowerBoardBlack_hsv, upperBoardBlack_hsv = (120, 30, 20), (150, 205, 70)
 
@@ -46,8 +48,6 @@ lowerWhite_hsv = (0, 0, 50)
 upperWhite_hsv = (5, 3, 255)
 lowerBlack_hsv = (0, 0, 0)
 upperBlack_hsv = (5, 3, 50)
-
-x1, y1, x2, y2 = 400, 160, 905, 670
 
 rival = 'WHITE'
 if GAMER == 'WHITE':
@@ -82,11 +82,14 @@ pts2 = np.float32([[0, 0], [width, 0], [0, height], [width, height]])
 matrix = cv2.getPerspectiveTransform(pts1, pts2)
 
 cam = cv2.VideoCapture(VIDEO_DEVICE)
+model = YOLO('best.pt')
 
 ### LICHESS ###
-API_TOKEN = 'lip_I07d8jqSPHAYzacfCumR'
+API_TOKEN = 'lip_LaYVt0nOKwUnjEv1gJSZ'
 session = berserk.TokenSession(API_TOKEN)
 client = berserk.Client(session=session)
+
+x1, y1, x2, y2 = 400, 160, 905, 670
 
 ### MATCH THE BOARDS ###
 ret, board = cam.read()
@@ -97,8 +100,11 @@ for x in range(8):
     for y in range(8):
         square = board[int(y * squareHeight):int((y+1) * squareHeight), int(x * squareWidth):int((x+1)*squareWidth)]
         
-        contents[7-x][y] = func.detectColor(square, lowerBoardWhite_hsv, upperBoardWhite_hsv, lowerBoardBlack_hsv, upperBoardBlack_hsv, whiteTreshold, blackTreshold)
+        contents[7-x][y] = func.detectColor(square, model)
 
+        # Old Color Detection Functions
+
+        #contents[7-x][y] = func.detectColor(square, lowerBoardWhite_hsv, upperBoardWhite_hsv, lowerBoardBlack_hsv, upperBoardBlack_hsv, whiteTreshold, blackTreshold)
         #contents[7-x][y] = func.colorDetect(square, references[x][y], midDefPerBlack, midDefPerWhite, vis=showDetails)
         #contents[7-x][y] = func.colorDetect2(square, lowerBoardWhite_hsv, upperWhite_hsv, lowerBlack_hsv, upperBlack_hsv, color_threshold, vis=showDetails)
         
@@ -158,9 +164,11 @@ while True:
                 for x in range(8):
                     for y in range(8):
                         square = board[int(y * squareHeight):int((y+1) * squareHeight), int(x * squareWidth):int((x+1)*squareWidth)]
-                        
-                        contents[7-x][y] = func.detectColor(square, lowerBoardWhite_hsv, upperBoardWhite_hsv, lowerBoardBlack_hsv, upperBoardBlack_hsv, whiteTreshold, blackTreshold)
 
+                        contents[7-x][y] = func.detectColor(square, model)
+
+                        # They are not used in the current version
+                        #contents[7-x][y] = func.detectColor(square, lowerBoardWhite_hsv, upperBoardWhite_hsv, lowerBoardBlack_hsv, upperBoardBlack_hsv, whiteTreshold, blackTreshold)
                         #contents[7-x][y] = func.colorDetect(square, references[x][y], midDefPerBlack, midDefPerWhite, vis=showDetails)
                 
                         cv2.imwrite(path+horizontal[x]+str(y+1)+'.jpg', square)
@@ -186,20 +194,23 @@ while True:
                         else:
                             move = "e1c1"
 
-                    try:
-                        berserk.clients.Board(session=session).make_move(GAME_ID, move)            
-                    except berserk.exceptions.ResponseError as e:
-                        print(e)
-                    else:
-                        #print("check2")
-                        #print(contents, newContents)
-                        #contents = copy.deepcopy(newContents)
-                        #liContents = copy.deepcopy(newContents)
+                    for i in range(20):
+                        try:
+                            berserk.clients.Board(session=session).make_move(GAME_ID, move)            
+                        except berserk.exceptions.ResponseError as e:
+                            print(e)
+                        else:
+                            #print("check2")
+                            #print(contents, newContents)
 
-                        move, captured = None, None
-                        changes = []
-                        turn = rival
-                        print("It's the opponent's turn!")  
+                            #contents = copy.deepcopy(newContents)
+                            #liContents = copy.deepcopy(newContents)
+
+                            move, captured = None, None
+                            changes = []
+                            turn = rival
+                            print("It's the opponent's turn!")
+                            break
         
     else:
         time.sleep(0.5)
