@@ -1,0 +1,7 @@
+numpy == 1.23.0
+opencv-python == 4.8.0.76
+berserk == 0.13.2
+colorama == 0.4.6
+serial == 0.0.97
+ultralytics == 8.1.40
+pillow == 10.3.0
